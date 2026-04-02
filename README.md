@@ -1,6 +1,6 @@
 # mini-tmk-agent-go
 
-Go 主工程 + Python DashScope 网关版本（Windows）。
+Go 主工程 + Python DashScope 网关版本（跨平台：Windows/Linux/macOS）。
 
 ## 运行前准备（按顺序）
 
@@ -30,16 +30,25 @@ ffplay -version
 $env:DASHSCOPE_API_KEY=""
 ```
 
+```bash
+export DASHSCOPE_API_KEY=""
+```
+
 如需 TTS：
 
 ```powershell
 $env:SILICONFLOW_API_KEY=""
 ```
 
+```bash
+export SILICONFLOW_API_KEY=""
+```
+
 ## 构建
 
 ```bash
-go build -o mini-tmk-agent.exe .
+go build -o mini-tmk-agent.exe . # windows
+go build -o mini-tmk-agent . # Linux
 ```
 
 ## 支持语言
@@ -48,26 +57,36 @@ go build -o mini-tmk-agent.exe .
 
 ## 流式模式（先取设备名，再运行）
 
-先列出麦克风设备（必做）：
+先按系统确认麦克风设备（推荐）：
+
+- Windows（dshow）：
 
 ```powershell
 ffmpeg -list_devices true -f dshow -i dummy
 ```
 
-从输出里找到你的音频设备名，比如：
-
-- `麦克风阵列 (适用于数字麦克风的英特尔® 智音技术)`
-
-然后把设备名填入 `--mic-device`：
+- Linux（pulse）：
 
 ```bash
-.\mini-tmk-agent.exe stream --source-lang zh --target-lang en --mic-device "麦克风阵列 (适用于数字麦克风的英特尔® 智音技术)"
+pactl list short sources
+```
+
+- macOS（avfoundation）：
+
+```bash
+ffmpeg -f avfoundation -list_devices true -i ""
+```
+
+然后把设备名（或设备编号）填入 `--mic-device`：
+
+```bash
+./mini-tmk-agent stream --source-lang zh --target-lang en --mic-device default
 ```
 
 启用 TTS（分段播报能力）：
 
 ```bash
-.\mini-tmk-agent.exe stream --source-lang zh --target-lang en --mic-device "麦克风阵列 (适用于数字麦克风的英特尔® 智音技术)" --enable-tts --tts-speed 1.0 --tts-threshold 8
+./mini-tmk-agent stream --source-lang zh --target-lang en --mic-device default --enable-tts --tts-speed 1.0 --tts-threshold 8
 ```
 
 ## Transcript 模式
@@ -93,7 +112,7 @@ ffmpeg -list_devices true -f dshow -i dummy
 ### stream 流程（实时麦克风）
 
 1. Go 解析 `stream` 参数，拉起 Python 网关子进程。
-2. Go 调用 `ffmpeg -f dshow` 从麦克风采集音频，并转成 `s16le/mono/16000` PCM 流。
+2. Go 按平台调用 ffmpeg 采集麦克风音频（Windows: `dshow`，Linux: `pulse`，macOS: `avfoundation`），并转成 `s16le/mono/16000` PCM 流。
 3. Go 将 PCM 持续写入 Python 的 `stdin`。
 4. Python 网关把音频帧送入 DashScope `TranslationRecognizerRealtime`。
 5. Python 将识别/翻译结果按事件 JSON 输出到 `stdout`。
@@ -116,11 +135,11 @@ ffmpeg -list_devices true -f dshow -i dummy
 - `final`：最终完整文本（主要用于 transcript 模式落盘）。
 - `error`：错误信息（Go 收到后中止流程并返回错误）。
 
-### 编码与中文显示说明（Windows）
+### 编码与中文显示说明
 
 - Go 与 Python 子进程间通信统一使用 UTF-8。
 - Go 启动 Python 时设置 `PYTHONUTF8=1`，避免管道场景下 Python 回退到系统代码页（如 GBK）导致中文乱码。
-- Windows 控制台侧通过 `SetConsoleOutputCP(65001)` 设置 UTF-8 输出代码页，确保 `[source]` 中文可正确显示。
+- 不同操作系统终端对 UTF-8 支持不同，建议使用 UTF-8 终端环境运行，确保 `[source]` 中文可正确显示。
 
 ## 参数总览
 
@@ -130,7 +149,7 @@ ffmpeg -list_devices true -f dshow -i dummy
 - `--target-lang` 目标语言（必填）
 - `--api-key` DashScope API key（可用 `DASHSCOPE_API_KEY`）
 - `--sample-rate` 采样率，默认 `16000`
-- `--mic-device` 麦克风设备名（Windows dshow，建议必传）
+- `--mic-device` 麦克风设备名/编号（Windows:dshow；Linux:pulse；macOS:avfoundation 音频设备编号），默认 `default`（macOS 默认使用 `0`）
 - `--enable-tts` 启用硅基流动 TTS
 - `--siliconflow-api-key` 硅基流动 key（可用 `SILICONFLOW_API_KEY`）
 - `--tts-voice` TTS 音色，默认 `FunAudioLLM/CosyVoice2-0.5B:alex`
@@ -154,7 +173,7 @@ ffmpeg -list_devices true -f dshow -i dummy
 - **`ffplay not found in PATH`**
   - 仅在启用 TTS 时需要，确保终端可执行 `ffplay -version`。
 - **stream 无声音频输入**
-  - 先执行 `ffmpeg -list_devices true -f dshow -i dummy`，再用 `--mic-device` 指定正确设备名。
+  - 先按系统枚举设备（Windows: `dshow`；Linux: `pactl`；macOS: `avfoundation`），再用 `--mic-device` 指定正确设备名/编号。
 - **`api key required`**
   - 设置 `DASHSCOPE_API_KEY`（和启用 TTS 时的 `SILICONFLOW_API_KEY`）或通过命令参数传入。
 

@@ -82,10 +82,6 @@ func runStream(args []string) error {
 	if *enableTTS && *siliconflowKey == "" {
 		return errors.New("siliconflow api key required via --siliconflow-api-key or SILICONFLOW_API_KEY")
 	}
-	if runtime.GOOS != "windows" {
-		return errors.New("stream microphone capture is currently implemented for Windows only")
-	}
-
 	gw, err := gatewayPath()
 	if err != nil {
 		return err
@@ -133,14 +129,11 @@ func runStream(args []string) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	ffArgs := []string{
-		"-v", "error",
-		"-f", "dshow",
-		"-i", "audio=" + *micDevice,
-		"-f", "s16le",
-		"-ac", "1",
-		"-ar", fmt.Sprintf("%d", *sampleRate),
-		"pipe:1",
+	ffArgs, err := buildStreamInputArgs(*micDevice, *sampleRate)
+	if err != nil {
+		_ = pyStdin.Close()
+		_ = pyCmd.Wait()
+		return err
 	}
 	ffCmd := exec.CommandContext(ctx, ffmpeg, ffArgs...)
 	ffOut, err := ffCmd.StdoutPipe()
@@ -177,6 +170,51 @@ func runStream(args []string) error {
 		return pyErr
 	}
 	return nil
+}
+
+func buildStreamInputArgs(micDevice string, sampleRate int) ([]string, error) {
+	device := strings.TrimSpace(micDevice)
+	if device == "" {
+		device = "default"
+	}
+	switch runtime.GOOS {
+	case "windows":
+		return []string{
+			"-v", "error",
+			"-f", "dshow",
+			"-i", "audio=" + device,
+			"-f", "s16le",
+			"-ac", "1",
+			"-ar", fmt.Sprintf("%d", sampleRate),
+			"pipe:1",
+		}, nil
+	case "linux":
+		return []string{
+			"-v", "error",
+			"-f", "pulse",
+			"-i", device,
+			"-f", "s16le",
+			"-ac", "1",
+			"-ar", fmt.Sprintf("%d", sampleRate),
+			"pipe:1",
+		}, nil
+	case "darwin":
+		// avfoundation audio input format uses "<video_device>:<audio_device>".
+		if device == "default" {
+			device = "0"
+		}
+		return []string{
+			"-v", "error",
+			"-f", "avfoundation",
+			"-i", ":" + device,
+			"-f", "s16le",
+			"-ac", "1",
+			"-ar", fmt.Sprintf("%d", sampleRate),
+			"pipe:1",
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported platform for stream capture: %s", runtime.GOOS)
+	}
 }
 
 func runTranscript(args []string) error {
