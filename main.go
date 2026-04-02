@@ -192,9 +192,10 @@ func buildStreamInputArgs(micDevice string, sampleRate int) ([]string, error) {
 		return []string{
 			"-v", "error",
 			"-use_wallclock_as_timestamps", "1",
-			"-fflags", "+genpts",
+			"-fflags", "+genpts+discardcorrupt",
 			"-f", "pulse",
 			"-i", device,
+			"-af", fmt.Sprintf("aresample=async=1:first_pts=0:out_sample_rate=%d", sampleRate),
 			"-f", "s16le",
 			"-ac", "1",
 			"-ar", fmt.Sprintf("%d", sampleRate),
