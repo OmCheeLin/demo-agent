@@ -27,13 +27,13 @@ ffplay -version
 - 配置密钥：
 
 ```powershell
-$env:DASHSCOPE_API_KEY="sk-a6d7fa643aa147bf913aa24b9e9f8653"
+$env:DASHSCOPE_API_KEY=""
 ```
 
 如需 TTS：
 
 ```powershell
-$env:SILICONFLOW_API_KEY="sk-aookzfowlknrzwrkqxthjwvpmfxlmonnmjrfmlcvypwecfcw"
+$env:SILICONFLOW_API_KEY=""
 ```
 
 ## 构建
