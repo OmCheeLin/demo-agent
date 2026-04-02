@@ -80,7 +80,11 @@ ffmpeg -f avfoundation -list_devices true -i ""
 然后把设备名（或设备编号）填入 `--mic-device`：
 
 ```bash
+# win
 ./mini-tmk-agent stream --source-lang zh --target-lang en --mic-device default
+
+# linux
+./mini-tmk-agent stream --source-lang zh --target-lang en --mic-device RDPSource --python-bin python3 
 ```
 
 启用 TTS（分段播报能力）：
@@ -92,8 +96,10 @@ ffmpeg -f avfoundation -list_devices true -i ""
 ## Transcript 模式
 
 ```bash
-.\mini-tmk-agent.exe transcript --file D:\go\workspace\mini-tmk-agent\mini-tmk-agent-go\test_data\中文.pcm --output .\out.txt --source-lang zh --target-lang en
+# Linux
+./mini-tmk-agent transcript --file /data/wangyi/demo-agent/test_data/中文.pcm --output /data/wangyi/demo-agent/test_data/out.txt --source-lang zh --target-lang en
 
+# win
 .\mini-tmk-agent.exe transcript --file D:\go\workspace\mini-tmk-agent\mini-tmk-agent-go\test_data\英语演讲.wav --output .\out.txt --source-lang en --target-lang zh
 
 .\mini-tmk-agent.exe transcript --file D:\go\workspace\mini-tmk-agent\mini-tmk-agent-go\test_data\英语演讲.mp3 --output .\out.txt --source-lang en --target-lang zh
