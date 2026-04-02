@@ -80,6 +80,48 @@ ffmpeg -list_devices true -f dshow -i dummy
 .\mini-tmk-agent.exe transcript --file D:\go\workspace\mini-tmk-agent\mini-tmk-agent-go\test_data\英语演讲.mp3 --output .\out.txt --source-lang en --target-lang zh
 ```
 
+## 代码原理与流程
+
+### 架构分层
+
+- **Go 主程序（`main.go`）**：负责命令行参数、流程编排、音频采集/解码、输出打印、结果落盘。
+- **Python 网关（`python_gateway/gateway.py`）**：负责对接 DashScope 实时识别与翻译 SDK。
+- **进程通信方式**：Go 通过 `stdin/stdout` 与 Python 子进程通信。
+  - Go -> Python：持续写入 PCM 音频帧（二进制）。
+  - Python -> Go：逐行输出 JSON 事件（`status/sentence/word/final/error`）。
+
+### stream 流程（实时麦克风）
+
+1. Go 解析 `stream` 参数，拉起 Python 网关子进程。
+2. Go 调用 `ffmpeg -f dshow` 从麦克风采集音频，并转成 `s16le/mono/16000` PCM 流。
+3. Go 将 PCM 持续写入 Python 的 `stdin`。
+4. Python 网关把音频帧送入 DashScope `TranslationRecognizerRealtime`。
+5. Python 将识别/翻译结果按事件 JSON 输出到 `stdout`。
+6. Go 读取事件并打印 `[source]/[target]`；如启用 `--enable-tts`，将 `word` 事件送入 TTS worker，按句尾或标点阈值分段播放。
+
+### transcript 流程（文件转写）
+
+1. Go 解析 `transcript` 参数，按输入后缀处理音频：
+   - `.pcm`：直接流式读取；
+   - `.wav/.mp3`：用 ffmpeg 转成 `s16le/mono/16000` PCM。
+2. Go 将 PCM 写入 Python 网关 `stdin`，音频结束后关闭写入端。
+3. Python 完成识别后输出 `final` 事件（完整源文+译文）。
+4. Go 汇总结果并写入 `--output` 文本文件。
+
+### 关键事件模型（Python -> Go）
+
+- `status`：阶段状态（启动、request_id、关闭等）。
+- `sentence`：一句完整结果（用于控制台展示）。
+- `word`：逐词增量结果（用于 TTS 分段缓冲）。
+- `final`：最终完整文本（主要用于 transcript 模式落盘）。
+- `error`：错误信息（Go 收到后中止流程并返回错误）。
+
+### 编码与中文显示说明（Windows）
+
+- Go 与 Python 子进程间通信统一使用 UTF-8。
+- Go 启动 Python 时设置 `PYTHONUTF8=1`，避免管道场景下 Python 回退到系统代码页（如 GBK）导致中文乱码。
+- Windows 控制台侧通过 `SetConsoleOutputCP(65001)` 设置 UTF-8 输出代码页，确保 `[source]` 中文可正确显示。
+
 ## 参数总览
 
 ### stream
