@@ -83,21 +83,25 @@ ffmpeg -f avfoundation -list_devices true -i ""
 # win
 ./mini-tmk-agent stream --source-lang zh --target-lang en --mic-device default
 
-# linux
+# linux(注意根据环境不同，可能为 python3 或 python)
 ./mini-tmk-agent stream --source-lang zh --target-lang en --mic-device RDPSource --python-bin python3 
 ```
 
 启用 TTS（分段播报能力）：
 
 ```bash
+# win
 ./mini-tmk-agent stream --source-lang zh --target-lang en --mic-device default --enable-tts --tts-speed 1.0 --tts-threshold 8
+
+# linux(注意根据环境不同，可能为 python3 或 python)
+./mini-tmk-agent stream --source-lang zh --target-lang en --mic-device RDPSource --enable-tts --tts-speed 1.0 --tts-threshold 8 --python-bin python3
 ```
 
 ## Transcript 模式
 
 ```bash
-# Linux
-./mini-tmk-agent transcript --file /data/wangyi/demo-agent/test_data/中文.pcm --output /data/wangyi/demo-agent/test_data/out.txt --source-lang zh --target-lang en
+# Linux(注意根据环境不同，可能为 python3 或 python)
+./mini-tmk-agent transcript --file ./test_data/中文.pcm --output ./out.txt --source-lang zh --target-lang en --python-bin python3
 
 # win
 .\mini-tmk-agent.exe transcript --file D:\go\workspace\mini-tmk-agent\mini-tmk-agent-go\test_data\英语演讲.wav --output .\out.txt --source-lang en --target-lang zh

@@ -191,6 +191,8 @@ func buildStreamInputArgs(micDevice string, sampleRate int) ([]string, error) {
 	case "linux":
 		return []string{
 			"-v", "error",
+			"-use_wallclock_as_timestamps", "1",
+			"-fflags", "+genpts",
 			"-f", "pulse",
 			"-i", device,
 			"-f", "s16le",
